@@ -138,3 +138,81 @@ def load_or_compute_norm_stats(
     stats_file.parent.mkdir(parents=True, exist_ok=True)
     stats_file.write_text(json.dumps({**key, "mean": mean, "std": std}, indent=2))
     return mean, std
+
+
+class ADNISliceDataset(Dataset):
+    """One item per slice: (image [1, 224, 224], label, patient_id, slice_pos)."""
+
+    def __init__(self, records, transform):
+        self.records = records
+        self.transform = transform
+
+    def __len__(self):
+        return len(self.records)
+
+    def load_image(self, i):
+        with Image.open(self.records[i]["path"]) as im:
+            img = im.convert("L")
+        return self.transform(img)
+
+    def __getitem__(self, i):
+        r = self.records[i]
+        return self.load_image(i), r["label"], r["pid"], r["slice_pos"]
+
+
+class ADNIPatientDataset(Dataset):
+    """One item per patient: (images [20, 1, 224, 224] in slice order, label, patient_id)."""
+
+    def __init__(self, slice_dataset: ADNISliceDataset):
+        self.slices = slice_dataset
+        groups = defaultdict(list)
+        for i, r in enumerate(slice_dataset.records):
+            groups[r["pid"]].append(i)
+        recs = slice_dataset.records
+        self.pids = sorted(groups)
+        self.index = {
+            pid: sorted(idx, key=lambda i: recs[i]["slice_pos"])
+            for pid, idx in groups.items()
+        }
+
+    def __len__(self):
+        return len(self.pids)
+
+    def __getitem__(self, k):
+        pid = self.pids[k]
+        idx = self.index[pid]
+        images = torch.stack([self.slices.load_image(i) for i in idx])
+        label = self.slices.records[idx[0]]["label"]
+        return images, label, pid
+
+
+def get_datasets(
+    root=DEFAULT_ROOT,
+    split_file=DEFAULT_SPLIT_FILE,
+    stats_file=DEFAULT_STATS_FILE,
+    num_workers=4,
+):
+    """Build train/val/test slice datasets sharing one set of training-only norm stats.
+
+    Returns (datasets, (mean, std)).
+    """
+    records = build_records(root, split_file)
+    mean, std = load_or_compute_norm_stats(records["train"], stats_file, num_workers)
+    tf = build_transform(mean, std)
+    datasets = {name: ADNISliceDataset(recs, tf) for name, recs in records.items()}
+    return datasets, (mean, std)
+
+
+def get_loaders(datasets, batch_size=64, num_workers=4):
+    """Slice-level loaders. Only train is shuffled."""
+    common = dict(
+        batch_size=batch_size,
+        num_workers=num_workers,
+        pin_memory=True,
+        persistent_workers=num_workers > 0,
+    )
+    return {
+        "train": DataLoader(datasets["train"], shuffle=True, **common),
+        "val": DataLoader(datasets["val"], shuffle=False, **common),
+        "test": DataLoader(datasets["test"], shuffle=False, **common),
+    }
