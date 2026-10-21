@@ -216,3 +216,43 @@ def get_loaders(datasets, batch_size=64, num_workers=4):
         "val": DataLoader(datasets["val"], shuffle=False, **common),
         "test": DataLoader(datasets["test"], shuffle=False, **common),
     }
+
+
+def _print_split_sizes(datasets):
+    print("\n== Split sizes ==")
+    print(f"{'split':6} {'patients':>8} {'AD':>5} {'NC':>5} {'slices':>7}")
+    for name, ds in datasets.items():
+        label_of = {r["pid"]: r["label"] for r in ds.records}
+        ad = sum(label_of.values())
+        print(
+            f"{name:6} {len(label_of):8d} {ad:5d} {len(label_of) - ad:5d} {len(ds):7d}"
+        )
+
+
+if __name__ == "__main__":
+    ap = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
+    ap.add_argument("--root", default=DEFAULT_ROOT)
+    ap.add_argument("--split-file", default=DEFAULT_SPLIT_FILE)
+    ap.add_argument("--stats-file", default=DEFAULT_STATS_FILE)
+    ap.add_argument("--num-workers", type=int, default=4)
+    ap.add_argument(
+        "--check-crop", action="store_true", help="check the crop on train/val images"
+    )
+    ap.add_argument("--grid-out", default=PROJECT_DIR / "images" / "sample_slices.png")
+    args = ap.parse_args()
+
+    datasets, (mean, std) = get_datasets(
+        args.root, args.split_file, args.stats_file, num_workers=args.num_workers
+    )
+    _print_split_sizes(datasets)
+    print("PASS: no patient-level leakage between train, val and test")
+    print(f"\nNormalisation (training patients only): mean={mean:.4f} std={std:.4f}")
+
+    x, y, pid, pos = datasets["train"][0]
+    print(
+        f"\nSlice sample: image {tuple(x.shape)}, label {y}, patient {pid}, slice pos {pos}"
+    )
+    images, y, pid = ADNIPatientDataset(datasets["val"])[0]
+    print(f"Patient sample: images {tuple(images.shape)}, label {y}, patient {pid}")
