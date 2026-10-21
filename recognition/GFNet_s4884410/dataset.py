@@ -91,3 +91,50 @@ def build_records(root=DEFAULT_ROOT, split_file=DEFAULT_SPLIT_FILE):
         _add_slice_positions(recs)
     check_no_leakage(out)
     return out
+
+
+def build_transform(mean=None, std=None):
+    """Image transform: 224 centre crop, scale to [0, 1], then normalise if stats are given.
+
+    The same deterministic transform is used for every split.
+    """
+    steps = [T.CenterCrop(IMG_SIZE), T.ToTensor()]  # ToTensor scales to [0, 1]
+    if mean is not None:
+        steps.append(T.Normalize([mean], [std]))
+    return T.Compose(steps)
+
+
+def compute_norm_stats(train_records, num_workers=4, batch_size=256):
+    """Pixel mean and std over training patients only (cropped, no augmentation)."""
+    ds = ADNISliceDataset(train_records, build_transform())
+    loader = DataLoader(ds, batch_size=batch_size, num_workers=num_workers)
+    total, total_sq, n = 0.0, 0.0, 0
+    for x, *_ in loader:
+        x = x.double()
+        total += x.sum().item()
+        total_sq += (x**2).sum().item()
+        n += x.numel()
+    mean = total / n
+    std = (total_sq / n - mean**2) ** 0.5
+    return mean, std
+
+
+def load_or_compute_norm_stats(
+    train_records, stats_file=DEFAULT_STATS_FILE, num_workers=4
+):
+    """Load cached stats if they match the current training set, otherwise recompute and save."""
+    key = {
+        "n_images": len(train_records),
+        "n_patients": len({r["pid"] for r in train_records}),
+        "img_size": IMG_SIZE,
+    }
+    stats_file = Path(stats_file)
+    if stats_file.exists():
+        cached = json.loads(stats_file.read_text())
+        if all(cached.get(k) == v for k, v in key.items()):
+            return cached["mean"], cached["std"]
+
+    mean, std = compute_norm_stats(train_records, num_workers=num_workers)
+    stats_file.parent.mkdir(parents=True, exist_ok=True)
+    stats_file.write_text(json.dumps({**key, "mean": mean, "std": std}, indent=2))
+    return mean, std
