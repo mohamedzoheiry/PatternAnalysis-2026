@@ -1,6 +1,5 @@
 import argparse
 import json
-import random
 from collections import defaultdict
 from pathlib import Path
 
@@ -20,6 +19,7 @@ IMG_EXTS = {".jpeg", ".jpg", ".png"}
 
 
 def parse_name(path: Path):
+    """'<patientID>_<sliceNo>.jpeg' -> (patient_id, slice_no as int)."""
     pid, slice_no = path.stem.rsplit("_", 1)
     return pid, int(slice_no)
 
@@ -237,10 +237,6 @@ if __name__ == "__main__":
     ap.add_argument("--split-file", default=DEFAULT_SPLIT_FILE)
     ap.add_argument("--stats-file", default=DEFAULT_STATS_FILE)
     ap.add_argument("--num-workers", type=int, default=4)
-    ap.add_argument(
-        "--check-crop", action="store_true", help="check the crop on train/val images"
-    )
-    ap.add_argument("--grid-out", default=PROJECT_DIR / "images" / "sample_slices.png")
     args = ap.parse_args()
 
     datasets, (mean, std) = get_datasets(
