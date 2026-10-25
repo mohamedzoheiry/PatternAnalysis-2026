@@ -10,7 +10,7 @@ from torch.optim.lr_scheduler import CosineAnnealingLR, LinearLR, SequentialLR
 from torch.utils.data import DataLoader, Subset
 
 from dataset import get_datasets, get_loaders
-from modules import BaselineCNN, count_parameters
+from modules import BaselineCNN, GFNet, count_parameters
 from utils import evaluate, plot_history, save_rows_csv, set_seed
 
 # Paths
@@ -21,14 +21,16 @@ RUNS_DIR = PROJECT_DIR / "runs"
 # Settings
 # Per model: maximum epochs, peak learning rate, warm-up length.
 MODEL_CONFIG = {
-    "cnn": {"epochs": 30, "lr": 1e-3, "warmup_epochs": 1},
-    "gfnet": {"epochs": 100, "lr": 5e-4, "warmup_epochs": 5},
+    "cnn": {"epochs": 30, "lr": 3e-4, "warmup_epochs": 1},
+    "gfnet": {"epochs": 50, "lr": 1e-4, "warmup_epochs": 5},
 }
+
+GFNET_ARGS = {"embed_dim": 256, "depth": 12, "mlp_ratio": 4.0, "drop_path_rate": 0.1}
 
 # Shared by all models.
 BATCH_SIZE = 64
 WEIGHT_DECAY = 0.05
-PATIENCE = 5  # stop after this many epochs without a lower validation loss
+PATIENCE = 30  # stop after this many epochs without a lower validation loss
 GRAD_CLIP = 1.0  # maximum gradient norm
 SEED = 42
 NUM_WORKERS = 1
@@ -43,6 +45,8 @@ def build_model(name):
     """Return a fresh model by name"""
     if name == "cnn":
         return BaselineCNN()
+    if name == "gfnet":
+        return GFNet(**GFNET_ARGS)
     raise ValueError(f"Unknown model: {name}")
 
 
@@ -103,7 +107,7 @@ def main():
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
     )
     ap.add_argument(
-        "--model", choices=["cnn"], required=True, help="architecture to train"
+        "--model", choices=["cnn", "gfnet"], required=True, help="architecture to train"
     )
     ap.add_argument(
         "--overfit", action="store_true", help="smoke test on a few training slices"
@@ -130,6 +134,7 @@ def main():
     config = {
         "run": name,
         "model": args.model,
+        "model_args": GFNET_ARGS if args.model == "gfnet" else {},
         "overfit": args.overfit,
         "epochs": epochs,
         "lr": cfg["lr"],
