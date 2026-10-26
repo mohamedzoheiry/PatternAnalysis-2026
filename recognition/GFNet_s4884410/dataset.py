@@ -93,12 +93,16 @@ def build_records(root=DEFAULT_ROOT, split_file=DEFAULT_SPLIT_FILE):
     return out
 
 
-def build_transform(mean=None, std=None):
-    """Image transform: 224 centre crop, scale to [0, 1], then normalise if stats are given.
-
-    The same deterministic transform is used for every split.
-    """
-    steps = [T.CenterCrop(IMG_SIZE), T.ToTensor()]  # ToTensor scales to [0, 1]
+def build_transform(mean=None, std=None, augment=False):
+    """Image transform: optional augmentation, 224 centre crop, scale to [0, 1], normalise."""
+    steps = []
+    if augment:
+        steps.append(
+            T.RandomAffine(
+                degrees=10, translate=(0.05, 0.05), scale=(0.95, 1.05), fill=0
+            )
+        )
+    steps += [T.CenterCrop(IMG_SIZE), T.ToTensor()]  # ToTensor scales to [0, 1]
     if mean is not None:
         steps.append(T.Normalize([mean], [std]))
     return T.Compose(steps)
@@ -191,15 +195,18 @@ def get_datasets(
     split_file=DEFAULT_SPLIT_FILE,
     stats_file=DEFAULT_STATS_FILE,
     num_workers=4,
+    augment=False,
 ):
-    """Build train/val/test slice datasets sharing one set of training-only norm stats.
-
-    Returns (datasets, (mean, std)).
-    """
     records = build_records(root, split_file)
     mean, std = load_or_compute_norm_stats(records["train"], stats_file, num_workers)
-    tf = build_transform(mean, std)
-    datasets = {name: ADNISliceDataset(recs, tf) for name, recs in records.items()}
+    eval_tf = build_transform(mean, std)
+    datasets = {
+        "train": ADNISliceDataset(
+            records["train"], build_transform(mean, std, augment)
+        ),
+        "val": ADNISliceDataset(records["val"], eval_tf),
+        "test": ADNISliceDataset(records["test"], eval_tf),
+    }
     return datasets, (mean, std)
 
 
