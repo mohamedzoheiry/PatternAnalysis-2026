@@ -25,7 +25,8 @@ MODEL_CONFIG = {
     "gfnet": {"epochs": 50, "lr": 1e-4, "warmup_epochs": 5},
 }
 
-GFNET_ARGS = {"embed_dim": 256, "depth": 12, "mlp_ratio": 4.0, "drop_path_rate": 0.1}
+GFNET_ARGS = {"embed_dim": 192, "depth": 6, "mlp_ratio": 4.0, "drop_path_rate": 0.1}
+AUGMENT = True
 
 # Shared by all models.
 BATCH_SIZE = 64
@@ -61,7 +62,9 @@ def build_scheduler(optimiser, warmup_steps, total_steps):
 
 def make_loaders(overfit):
     """Full train/val loaders, or one small fixed subset for the overfit smoke test."""
-    datasets, (mean, std) = get_datasets(DATA_ROOT, num_workers=NUM_WORKERS)
+    datasets, (mean, std) = get_datasets(
+        DATA_ROOT, num_workers=NUM_WORKERS, augment=AUGMENT and not overfit
+    )
     if not overfit:
         loaders = get_loaders(datasets, BATCH_SIZE, NUM_WORKERS)
         return loaders["train"], loaders["val"], (mean, std)
@@ -146,6 +149,7 @@ def main():
         "grad_clip": GRAD_CLIP,
         "seed": SEED,
         "amp": device.type == "cuda",
+        "augment": AUGMENT and not args.overfit,
         "label_smoothing": 0.0,
         "parameters": n_params,
         "norm_mean": mean,
