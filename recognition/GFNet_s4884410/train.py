@@ -25,7 +25,22 @@ MODEL_CONFIG = {
     "gfnet": {"epochs": 50, "lr": 1e-4, "warmup_epochs": 5},
 }
 
-GFNET_ARGS = {"embed_dim": 192, "depth": 6, "mlp_ratio": 4.0, "drop_path_rate": 0.1}
+GFNET_SIZES = {
+    "ti": {
+        "embed_dim": 256,
+        "depth": 12,
+        "mlp_ratio": 4.0,
+        "drop_path_rate": 0.1,
+    },  # 7.1M params
+    "small": {
+        "embed_dim": 192,
+        "depth": 6,
+        "mlp_ratio": 4.0,
+        "drop_path_rate": 0.1,
+    },  # 2.1M params
+}
+
+GFNET_ARGS = GFNET_SIZES["ti"]
 AUGMENT = True
 
 # Shared by all models.
