@@ -105,3 +105,4 @@ If GFNet cannot exceed 80% accuracy, or beat the baseline model, we can attempt 
 ## Artificial Intelligence Usage Disclosure
 
 ## References
+Must include: GFNet paper, GFNet github repo, timm github repo. CITE IN SCRIPTS AND HERE.
