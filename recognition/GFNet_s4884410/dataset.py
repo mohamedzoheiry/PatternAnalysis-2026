@@ -17,6 +17,13 @@ LABELS = {"NC": 0, "AD": 1}  # AD is the positive class
 IMG_SIZE = 224
 IMG_EXTS = {".jpeg", ".jpg", ".png"}
 
+# Training augmentation (applied to the training split only)
+AUG_ROTATION = 15
+AUG_TRANSLATE = 0.10
+AUG_SCALE = (0.90, 1.10)
+AUG_BRIGHTNESS = 0.15
+AUG_CONTRAST = 0.15
+
 
 def parse_name(path: Path):
     """'<patientID>_<sliceNo>.jpeg' -> (patient_id, slice_no as int)."""
@@ -97,11 +104,15 @@ def build_transform(mean=None, std=None, augment=False):
     """Image transform: optional augmentation, 224 centre crop, scale to [0, 1], normalise."""
     steps = []
     if augment:
-        steps.append(
+        steps += [
             T.RandomAffine(
-                degrees=10, translate=(0.05, 0.05), scale=(0.95, 1.05), fill=0
-            )
-        )
+                degrees=AUG_ROTATION,
+                translate=(AUG_TRANSLATE, AUG_TRANSLATE),
+                scale=AUG_SCALE,
+                fill=0,
+            ),
+            T.ColorJitter(brightness=AUG_BRIGHTNESS, contrast=AUG_CONTRAST),
+        ]
     steps += [T.CenterCrop(IMG_SIZE), T.ToTensor()]  # ToTensor scales to [0, 1]
     if mean is not None:
         steps.append(T.Normalize([mean], [std]))

@@ -9,7 +9,15 @@ import torch.nn as nn
 from torch.optim.lr_scheduler import CosineAnnealingLR, LinearLR, SequentialLR
 from torch.utils.data import DataLoader, Subset
 
-from dataset import get_datasets, get_loaders
+from dataset import (
+    AUG_BRIGHTNESS,
+    AUG_CONTRAST,
+    AUG_ROTATION,
+    AUG_SCALE,
+    AUG_TRANSLATE,
+    get_datasets,
+    get_loaders,
+)
 from modules import BaselineCNN, GFNet, count_parameters
 from utils import evaluate, plot_history, save_rows_csv, set_seed
 
@@ -165,6 +173,15 @@ def main():
         "seed": SEED,
         "amp": device.type == "cuda",
         "augment": AUGMENT and not args.overfit,
+        "augment_settings": {
+            "rotation": AUG_ROTATION,
+            "translate": AUG_TRANSLATE,
+            "scale": AUG_SCALE,
+            "brightness": AUG_BRIGHTNESS,
+            "contrast": AUG_CONTRAST,
+        }
+        if AUGMENT and not args.overfit
+        else None,
         "label_smoothing": 0.0,
         "parameters": n_params,
         "norm_mean": mean,
