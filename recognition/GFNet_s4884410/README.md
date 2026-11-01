@@ -1,36 +1,50 @@
 # Diagnosis of Alzheimer's Disease using GFNet on ADNI Brain MRI Dataset
-
 ## Introduction
-### Algorithm Description
 
 ### Problem Description
 
+Alzheimer’s disease is a common form of dementia that affects memory, thinking skills, and the ability to complete daily tasks. Alzheimer’s causes progressive brain atrophy, which becomes visible as shrinkage of the hippocampus and cortex, and enlargement of the ventricles. As such, deep learning models can be employed to learn to detect such changes in the structure of the brain, supporting early screening so that patients can receive early treatment and better outcomes. The purpose of this project is to train and use a Global Filter Network (GFNet) Model to classify brain MRI slices as either having Alzheimer’s Disease (AD) or being Cognitively Normal (CN). The GFNet Model will be compared against a simple baseline model to evaluate whether its added complexity and computational cost provide a meaningful improvement in classification performance. The model will be trained on the ADNI (Alzheimer’s Disease Neuroimaging Initiative) dataset, which contains T1-weighted structural brain MRI scans from AD and CN subjects.
+
+### Algorithm Description
+
+GFNet [1] is a vision-transformer style architecture that replaces the self-attention sub-layer with a global filter layer. Each 224x224 input image is split into 16x16 patches, giving a 14x14 grid of 196 tokens. Each patch is linearly embedded into a 256-dimensional token, and a learnable positional embedding is added. The tokens then pass through a stack of 12 GFNet Blocks. Each of these blocks applies layer normalisation, the global filter layer, a second layer normalisation, and a feed-forward MLP, with a single residual connection around the whole block, as per the official implementation [2].
+
+The global filter layer consists of three main operations:
+
+1. A 2D discrete Fourier Transform to convert the input features to the frequency domain.
+2. An element-wise multiplication between the frequency domain features and the global filters.
+3. A 2D inverse Fourier transform to convert the features back to the spatial domain.
+
+This is equivalent to a circular convolution with a kernel as large as the whole token grid, so every region of the brain can influence every other region in a single layer. It does this at O(L log L) cost in the number of tokens L, compared with O(L²) for self-attention.
+
+After the final block, a layer normalisation is applied, the tokens are averaged (global average pooling), and a linear classification head outputs the AD/CN prediction. The network is trained with cross-entropy loss.
+
+![GFNet architecture](images/gfnet_architecture.png)
+
 ## Feasibility Review
-1.	User need, Scope & Acceptance Criteria
 
-**Intended User**: Radiologists / Medical Professionals who review T1 Brain MRIs for Alzeimer’s disease. Can be used to screen for confident AD/CN cases, and to forward ambiguous cases to a specialist for review.
+**Intended user:** Radiologists and other medical professionals who review T1-weighted brain MRIs for Alzheimer’s disease. The prototype is an assistant for diagnosis, and not a replacement. It handles high-confidence AD/CN cases and forwards ambiguous, low-confidence cases to a specialist for review.
 
-**Scope**: AD vs CN classification from the 20 pre-processed slices per patient. GFNet is compared against a simple CNN baseline on identical splits.
+**Scope:** Binary AD vs CN classification from the 20 pre-processed 2D slices per patient in the ADNI dataset. GFNet is compared against a simple CNN baseline on identical training/validation/test splits. Performance is reported at both the slice and patient level.
 
-**Acceptance Criteria**: 
-a.	GFNet must achieve >= 80% slice accuracy on test slices.
+**Acceptance criteria:**
 
-b.	Resources: peak VRAM <= X GB, training time <= 30 mins on A100 GPU, parameter count <= X
+- **a. Accuracy:** GFNet must achieve >=80% slice-level accuracy on the test set.
+- **b. Quantitative metrics:** Per-class precision and recall, macro-F1 and AUROC must be reported. AD recall has the highest priority because missed AD cases have the most severe consequences.
+- **c. Confidence:** A confidence threshold will be chosen on the validation set such that cases above it are automated, and cases below are forwarded to a specialist for review.
+- **d. Resources:** Peak VRAM <= 8GB, parameter count <= 25M. Inference latency per patient is reported for both models.
 
-c.	Precision, macro-F1, AUROC.
+**Model Choice and Course Concepts:**
 
-d.	???
+- **a. Model:** GFNet (Hard Difficulty)
+- **b. Baseline:** A simple CNN with 4 blocks (Conv 3x3 -> BatchNorm -> ReLU -> MaxPool 2x2), followed by global average pooling and a linear head.
+- **c. Dataset:** ADNI brain MRI dataset
 
-2.	Model Choice and Course Concepts
+**Preliminary results:**
 
-**Model**: GFNet (Hard difficulty)
+A data audit was conducted to understand the properties of the dataset, and to verify that the train, validation, and test splits are separated at the patient level with no leakage.
 
-**Baseline**: Simple CNN with 4 blocks (Conv 3x3 -> BatchNorm -> ReLU -> MaxPool 2x2)
-
-**Dataset**: ADNI Brain MRI Dataset.
-
-3.	Preliminary Feasibility Evidence
-```
+```text
 == Counts ==
 split  class   images  patients
 train  AD       10400       520
@@ -62,47 +76,41 @@ test  AD=223 NC=227 total=450 AD share=0.50
 
 Saved patient lists to splits/val_split.json
 ```
-4.	Risks, Budget & Fallback
-Risks:
 
-a.	Overfitting: Memorising training set can mean that the model fails to recognise patterns and cannot perform accurately on test data (for example, first GFNet training run). Can address this my modifying size of model (changing parameter count), as well as data augmentation.
+The dataset is roughly balanced, with AD patients making up 48-50% of total patients across all splits. Every patient has exactly 20 slices. Leakage checks confirm that no patient ID appears in more than one split or in both classes. The image have uniform size and intensity range, so preprocessing only requires resizing (cropping) and normalisation.
 
-b.	False negative vs false positive: Risk and cost of false negative is significantly higher than that of a false positive. 
+**Risks:**
 
-c.	Cannot guarantee that there is no leakage between the data splits. A single patient may have more than one ID, causing them to appear in both the test and training splits.
+- **a. Overfitting:** GFNet can memorise the training set instead of learning patterns. This can be mitigated using data augmentation, and a stronger model.
+- **b. Asymmetric error cost:** A false negative is far more costly than a false positive. To mitigate this, AD recall must be prioritised when selecting an operating threshold.
+- **c. Hidden leakage:** The leakage check above only checks patient IDs. If one patient has more than one ID, their scans can appear in both training and test sets, which cannot be detected.
 
-d.	GFNet may not outperform the baseline model.
+**Budget:** A single A100 GPU on Rangpur, with training limited to 45 minutes per run. The main constraint is queue wait times and GPU availability.
 
-Budget:
+**Next planned experiment:** Train both models with data augmentation, and measure performance on the test set.
 
-a.	Must run on A100 GPU
+**Fallbacks:**
 
-b.	Training time + resource accessibility
+- **a. Overfitting:** Can reduce depth or embedding dimension, increase stochastic depth, strengthen augmentation.
+- **b. Underfitting:** Can increase depth or embedding dimension, or train for more epochs.
+- **c. Patient-level aggregation:** Can average predictions across each patient’s 20 slices to smooth out noisy individual slices.
 
+## Dependencies + Reproducibility of Results
 
-Fallbacks:
+## Inputs, Outputs, Plots
 
-If GFNet cannot exceed 80% accuracy, or beat the baseline model, we can attempt to fix this by:
-
-1.	Modifying size of GFNet model (Increasing depth / parameter count)
-2.	Increasing stochastic depth (0.1 -> 0.2-0.3)
-
-## Dependencies
-
-## Data Splitting and Preprocessing
-
-## Training and Validation of Models
+## Data Preprocessing and Training
 
 ## Investigation of the Open Research Dilemma
-### Quantitative Benchmarking of GFNet against Baseline CNN Model
+
+### Quantitative Benchmarking
 
 ### Resource Profiling
 
 ### Qualitative Error Autopsies
 
-### Engineering Recommendation and Trade-off Synthesis
+### Recommendation
 
-## Artificial Intelligence Usage Disclosure
+## AI Disclosure
 
 ## References
-Must include: GFNet paper, GFNet github repo, timm github repo. CITE IN SCRIPTS AND HERE.
