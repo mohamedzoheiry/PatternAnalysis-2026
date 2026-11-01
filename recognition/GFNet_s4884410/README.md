@@ -29,16 +29,16 @@ After the final block, a layer normalisation is applied, the tokens are averaged
 
 **Acceptance criteria:**
 
-- **a. Accuracy:** GFNet must achieve >=80% slice-level accuracy on the test set.
-- **b. Quantitative metrics:** Per-class precision and recall, macro-F1 and AUROC must be reported. AD recall has the highest priority because missed AD cases have the most severe consequences.
-- **c. Confidence:** A confidence threshold will be chosen on the validation set such that cases above it are automated, and cases below are forwarded to a specialist for review.
-- **d. Resources:** Peak VRAM <= 8GB, parameter count <= 25M. Inference latency per patient is reported for both models.
+- **Accuracy:** GFNet must achieve >=80% slice-level accuracy on the test set.
+- **Quantitative metrics:** Per-class precision and recall, macro-F1 and AUROC must be reported. AD recall has the highest priority because missed AD cases have the most severe consequences.
+- **Confidence:** A confidence threshold will be chosen on the validation set such that cases above it are automated, and cases below are forwarded to a specialist for review.
+- **Resources:** Peak VRAM <= 8GB, parameter count <= 25M. Inference latency per patient is reported for both models.
 
 **Model Choice and Course Concepts:**
 
-- **a. Model:** GFNet (Hard Difficulty)
-- **b. Baseline:** A simple CNN with 4 blocks (Conv 3x3 -> BatchNorm -> ReLU -> MaxPool 2x2), followed by global average pooling and a linear head.
-- **c. Dataset:** ADNI brain MRI dataset
+- **Model:** GFNet (Hard Difficulty)
+- **Baseline:** A simple CNN with 4 blocks (Conv 3x3 -> BatchNorm -> ReLU -> MaxPool 2x2), followed by global average pooling and a linear head.
+- **Dataset:** ADNI brain MRI dataset
 
 **Preliminary results:**
 
@@ -81,9 +81,9 @@ The dataset is roughly balanced, with AD patients making up 48-50% of total pati
 
 **Risks:**
 
-- **a. Overfitting:** GFNet can memorise the training set instead of learning patterns. This can be mitigated using data augmentation, and a stronger model.
-- **b. Asymmetric error cost:** A false negative is far more costly than a false positive. To mitigate this, AD recall must be prioritised when selecting an operating threshold.
-- **c. Hidden leakage:** The leakage check above only checks patient IDs. If one patient has more than one ID, their scans can appear in both training and test sets, which cannot be detected.
+- **Overfitting:** GFNet can memorise the training set instead of learning patterns. This can be mitigated using data augmentation, and a stronger model.
+- **Asymmetric error cost:** A false negative is far more costly than a false positive. To mitigate this, AD recall must be prioritised when selecting an operating threshold.
+- **Hidden leakage:** The leakage check above only checks patient IDs. If one patient has more than one ID, their scans can appear in both training and test sets, which cannot be detected.
 
 **Budget:** A single A100 GPU on Rangpur, with training limited to 45 minutes per run. The main constraint is queue wait times and GPU availability.
 
@@ -91,11 +91,24 @@ The dataset is roughly balanced, with AD patients making up 48-50% of total pati
 
 **Fallbacks:**
 
-- **a. Overfitting:** Can reduce depth or embedding dimension, increase stochastic depth, strengthen augmentation.
-- **b. Underfitting:** Can increase depth or embedding dimension, or train for more epochs.
-- **c. Patient-level aggregation:** Can average predictions across each patient’s 20 slices to smooth out noisy individual slices.
+- **Overfitting:** Can reduce depth or embedding dimension, increase stochastic depth, strengthen augmentation.
+- **Underfitting:** Can increase depth or embedding dimension, or train for more epochs.
+- **Patient-level aggregation:** Can average predictions across each patient’s 20 slices to smooth out noisy individual slices.
 
 ## Dependencies + Reproducibility of Results
+
+This project has the following dependencies:
+
+- python - v3.11.16
+- torch - v2.13.0
+- torchvision - v0.28.0
+- numpy - v2.4.6
+- pillow - v12.3.0
+- scikit-learn - v1.9.0
+- matplotlib - v3.11.1
+
+**Reproducibility of Results:**
+
 
 ## Inputs, Outputs, Plots
 
