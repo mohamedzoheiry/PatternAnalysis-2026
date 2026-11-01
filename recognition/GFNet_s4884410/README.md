@@ -209,7 +209,15 @@ The filters appear to show a high degree of noise: with a lack of structure in b
 The ADNI dataset was stored on the Rangpur HPC cluster, and had the following folder structure:
 
 ```text
-PASTE FOLDER STRUCTURE HERE
+/home/groups/comp3710/
+└── ADNI/
+    └── AD_NC/
+        ├── train/
+        │   ├── AD/    10,400 slices (520 patients)
+        │   └── NC/    11,120 slices (556 patients)
+        └── test/
+            ├── AD/     4,460 slices (223 patients)
+            └── NC/     4,540 slices (227 patients)
 ```
 
 ### Data Preprocessing
