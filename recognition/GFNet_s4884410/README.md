@@ -347,6 +347,131 @@ Clearly, the GFNet model is much more computationally expensive compared to the 
 
 ### Qualitative Error Autopsies
 
+In this section, three different failure cases will be analyse to better understand the performance of the GFNet model:
+
+#### Case 1: Patient 1005735 – confident miss (true AD, predicted NC)
+
+<p align="center">
+  <img src="images/patient_1005735.png" alt="Patient 1005735 slices and predictions" width="80%">
+</p>
+
+```text
+Patient 1005735 (GFNET): true AD, predicted NC
+ Slice              File    P(AD)  Prediction
+---------------------------------------------
+     1   1005735_94.jpeg    0.013          NC
+     2   1005735_95.jpeg    0.028          NC
+     3   1005735_96.jpeg    0.012          NC
+     4   1005735_97.jpeg    0.003          NC
+     5   1005735_98.jpeg    0.025          NC
+     6   1005735_99.jpeg    0.009          NC
+     7  1005735_100.jpeg    0.004          NC
+     8  1005735_101.jpeg    0.001          NC
+     9  1005735_102.jpeg    0.000          NC
+    10  1005735_103.jpeg    0.001          NC
+    11  1005735_104.jpeg    0.007          NC
+    12  1005735_105.jpeg    0.005          NC
+    13  1005735_106.jpeg    0.001          NC
+    14  1005735_107.jpeg    0.004          NC
+    15  1005735_108.jpeg    0.000          NC
+    16  1005735_109.jpeg    0.000          NC
+    17  1005735_110.jpeg    0.003          NC
+    18  1005735_111.jpeg    0.011          NC
+    19  1005735_112.jpeg    0.003          NC
+    20  1005735_113.jpeg    0.001          NC
+---------------------------------------------
+  Mean                      0.007          NC
+Slice std 0.008
+```
+
+For this patient, the model predicts all of the 20 slices as NC with very high certainty (each below 0.025). The mean prediction is 0.007, and the standard deviation is 0.008, so the model is confident and consistent.
+
+The most likely trigger for this is that in the slices shown, the brain appears to be visually healthy, with no clear evidence of atrophy. A likely explanation for this is that this is a case of mild or early-stage Alzheimer’s, where the label is a result of clinical diagnosis and not imaging alone.
+
+This is the most dominant failure mode, as supported by the spike near 0 in the histogram. No confidence-based rule could catch this, because the model is confident and consistent in its prediction.
+
+#### Case 2: Patient 1011824 – conflicted miss (true AD, predicted NC)
+
+<p align="center">
+  <img src="images/patient_1011824.png" alt="Patient 1011824 slices and predictions" width="80%">
+</p>
+
+```text
+Patient 1011824 (GFNET): true AD, predicted NC
+ Slice              File    P(AD)  Prediction
+---------------------------------------------
+     1   1011824_78.jpeg    0.982          AD
+     2   1011824_79.jpeg    0.717          AD
+     3   1011824_80.jpeg    0.114          NC
+     4   1011824_81.jpeg    0.013          NC
+     5   1011824_82.jpeg    0.008          NC
+     6   1011824_83.jpeg    0.027          NC
+     7   1011824_84.jpeg    0.078          NC
+     8   1011824_85.jpeg    0.692          AD
+     9   1011824_86.jpeg    0.968          AD
+    10   1011824_87.jpeg    0.973          AD
+    11   1011824_88.jpeg    0.985          AD
+    12   1011824_89.jpeg    0.998          AD
+    13   1011824_90.jpeg    0.990          AD
+    14   1011824_91.jpeg    0.815          AD
+    15   1011824_92.jpeg    0.379          NC
+    16   1011824_93.jpeg    0.165          NC
+    17   1011824_94.jpeg    0.089          NC
+    18   1011824_95.jpeg    0.017          NC
+    19   1011824_96.jpeg    0.122          NC
+    20   1011824_97.jpeg    0.110          NC
+---------------------------------------------
+  Mean                      0.462          NC
+Slice std 0.413
+```
+
+In this case, the slices disagree significantly. Slices 1-2 and 8-14 are confidently AD, while slices 3-7 and 15-20 are confidently NC. The mean of 0.462 is right below the threshold, and the standard deviation is very high (0.413).
+
+The slices show clear signs of atrophy, but neighbouring slices that look nearly identical show very different predictions. The image quality appears to be slightly grainier than the previous case, which suggests that image/scan quality can have an impact on predictions.
+
+A slice disagreement rule would be able to catch this case in a real application, since the spread is higher than normal.
+
+#### Case 3: Patient 1253141 – confident false alarm (true AD, predicted NC)
+
+<p align="center">
+  <img src="images/patient_1253141.png" alt="Patient 1253141 slices and predictions" width="80%">
+</p>
+
+```text
+Patient 1253141 (GFNET): true NC, predicted AD
+ Slice              File    P(AD)  Prediction
+---------------------------------------------
+     1   1253141_95.jpeg    0.999          AD
+     2   1253141_96.jpeg    1.000          AD
+     3   1253141_97.jpeg    1.000          AD
+     4   1253141_98.jpeg    0.999          AD
+     5   1253141_99.jpeg    0.998          AD
+     6  1253141_100.jpeg    0.997          AD
+     7  1253141_101.jpeg    0.998          AD
+     8  1253141_102.jpeg    0.997          AD
+     9  1253141_103.jpeg    0.989          AD
+    10  1253141_104.jpeg    0.999          AD
+    11  1253141_105.jpeg    0.975          AD
+    12  1253141_106.jpeg    0.946          AD
+    13  1253141_107.jpeg    0.585          AD
+    14  1253141_108.jpeg    0.584          AD
+    15  1253141_109.jpeg    0.872          AD
+    16  1253141_110.jpeg    0.885          AD
+    17  1253141_111.jpeg    0.994          AD
+    18  1253141_112.jpeg    0.997          AD
+    19  1253141_113.jpeg    1.000          AD
+    20  1253141_114.jpeg    0.999          AD
+---------------------------------------------
+  Mean                      0.941          AD
+Slice std 0.124
+```
+
+In this case, all 20 slices were classified as AD. The mean is 0.941, and the standard deviation is moderate at 0.124. The model was confident and consistent.
+
+The slices show that despite the patient being healthy, there are signs of atrophy. One potential explanation for this could be age-related atrophy, in an older cognitively normal person.
+
+Similarly to Case 1, this is a confident failure case that no confidence-based rule could catch.
+
 ### Recommendation
 
 ## AI Disclosure
