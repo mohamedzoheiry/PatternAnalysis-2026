@@ -95,8 +95,8 @@ The dataset is roughly balanced, with AD patients making up 48-50% of total pati
 - **Underfitting:** Can increase depth or embedding dimension, or train for more epochs.
 - **Patient-level aggregation:** Can average predictions across each patient’s 20 slices to smooth out noisy individual slices.
 
-## Dependencies + Reproducibility of Results
-**Project Dependencies:**
+## Dependencies
+
 This project has the following dependencies:
 
 - python - v3.11.16
@@ -106,8 +106,6 @@ This project has the following dependencies:
 - pillow - v12.3.0
 - scikit-learn - v1.9.0
 - matplotlib - v3.11.1
-
-**Reproducibility of Results:**
 
 
 ## Inputs, Outputs, Plots
@@ -320,6 +318,8 @@ To further investigate the nature of the predictions of the models, a set of his
 </p>
 
 The histograms confirm the low sensitivity and high specificity: NC slices lie almost entirely below 0.5, while many AD slices sit confidently near 0. So most missed AD cases are confident errors rather than borderline ones, which explains the high test loss of both models.
+
+One potential justification for the lack of improved performance from the GFNet model is evident in the filter visualisation earlier in this report. The learned filters are very noisy, indicating that they learned little structure during training. It is evident that the performance of the GFNet may have relied heavily on the MLPs and patch embedding. This outcome may be a consequence of training on a relatively small dataset.  
 
 Overall, based on these results, the CNN is the better choice. It provides equal classification performance, with slightly better confidence. GFNet’s added complexity isn’t justified.
 
