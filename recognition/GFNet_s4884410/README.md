@@ -96,7 +96,7 @@ The dataset is roughly balanced, with AD patients making up 48-50% of total pati
 - **Patient-level aggregation:** Can average predictions across each patient’s 20 slices to smooth out noisy individual slices.
 
 ## Dependencies + Reproducibility of Results
-
+**Project Dependencies:**
 This project has the following dependencies:
 
 - python - v3.11.16
@@ -111,6 +111,8 @@ This project has the following dependencies:
 
 
 ## Inputs, Outputs, Plots
+
+
 
 ## Data Preprocessing and Training
 
