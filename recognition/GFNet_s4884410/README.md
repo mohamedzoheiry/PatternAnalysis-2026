@@ -481,7 +481,16 @@ Based on the results throughout this report, several recommendations can be made
 3. The CNN is the better model for this application. Both models have a very similar classification performance, and similar failure modes. However, the GFNet is much more computationally expensive and complex. The added architectural complexity and computational cost of the GFNet is not justified by its performance.
 4. Neither model is suitable or ready for autonomous use. It has been shown that both models miss over 40% of AD patients, with many of those being confident misses.
 
-## AI Disclosure
+## Artificial Intelligence Usage Disclosure
+
+Throughout this project, Artificial Intelligence (AI) models (Claude) were used for:
+
+- Scaffolding data loading and preprocessing functionality in `dataset.py` and `audit_data.py`.
+- Assisting with file I/O, including saving training results as `.csv` or `.json` files
+- Generating function and script-level docstrings
+- Generating scripts for plotting and visualising data (see `/scripts` folder)
+
+All AI-generated code was read and verified before use. Code was tested on smaller examples before running on full applications. All outputs were analysed and verified before committing AI-generated code and building further functionality.
 
 ## References
 
