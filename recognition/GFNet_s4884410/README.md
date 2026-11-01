@@ -85,7 +85,7 @@ The dataset is roughly balanced, with AD patients making up 48-50% of total pati
 - **Asymmetric error cost:** A false negative is far more costly than a false positive. To mitigate this, AD recall must be prioritised when selecting an operating threshold.
 - **Hidden leakage:** The leakage check above only checks patient IDs. If one patient has more than one ID, their scans can appear in both training and test sets, which cannot be detected.
 
-**Budget:** A single A100 GPU on Rangpur, with training limited to 45 minutes per run. The main constraint is queue wait times and GPU availability.
+**Budget:** A single A100 GPU on Rangpur. The main constraint is queue wait times and GPU availability.
 
 **Next planned experiment:** Train both models with data augmentation, and measure performance on the test set.
 
