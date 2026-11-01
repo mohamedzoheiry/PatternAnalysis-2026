@@ -112,6 +112,94 @@ This project has the following dependencies:
 
 ## Inputs, Outputs, Plots
 
+### Training
+
+To train the GFNet model on the ADNI dataset, run the following command from the project directory:
+
+```bash
+python train.py --model gfnet
+```
+
+The script trains the model on a patient-level training split, as outlined in the Data Preprocessing and Training section below. The script evaluates the model on the validation split after each epoch, and saves the checkpoint with the lowest validation loss to ‘runs/’. An abbreviated log from the final training run is shown below (* indicates that a checkpoint was saved):
+
+```text
+Run gfnet_20261027_144653 | device NVIDIA A100-PCIE-40GB | gfnet: 7,124,226 parameters
+epoch   1 | lr 1.00e-07 | train loss 0.6760 acc 0.583 | val loss 0.6273 slice acc 0.641 patient acc 0.652 auroc 0.741 | 40s 1.57GB *
+epoch   2 | lr 2.01e-05 | train loss 0.6170 acc 0.662 | val loss 0.5450 slice acc 0.711 patient acc 0.708 auroc 0.841 | 38s 1.57GB *
+epoch   3 | lr 4.01e-05 | train loss 0.5799 acc 0.692 | val loss 0.5122 slice acc 0.739 patient acc 0.776 auroc 0.860 | 39s 1.57GB *
+epoch   4 | lr 6.00e-05 | train loss 0.5511 acc 0.718 | val loss 0.5045 slice acc 0.739 patient acc 0.807 auroc 0.887 | 37s 1.57GB *
+epoch   5 | lr 8.00e-05 | train loss 0.5243 acc 0.740 | val loss 0.6879 slice acc 0.626 patient acc 0.627 auroc 0.884 | 37s 1.57GB
+epoch   6 | lr 1.00e-04 | train loss 0.5063 acc 0.753 | val loss 0.4747 slice acc 0.783 patient acc 0.839 auroc 0.897 | 37s 1.57GB *
+epoch   7 | lr 9.99e-05 | train loss 0.4833 acc 0.767 | val loss 0.5319 slice acc 0.722 patient acc 0.745 auroc 0.909 | 38s 1.57GB
+epoch   8 | lr 9.95e-05 | train loss 0.4574 acc 0.785 | val loss 0.4404 slice acc 0.796 patient acc 0.826 auroc 0.921 | 37s 1.57GB *
+epoch   9 | lr 9.89e-05 | train loss 0.4479 acc 0.787 | val loss 0.4859 slice acc 0.766 patient acc 0.807 auroc 0.921 | 37s 1.57GB
+epoch  10 | lr 9.81e-05 | train loss 0.4227 acc 0.807 | val loss 0.4865 slice acc 0.775 patient acc 0.789 auroc 0.927 | 37s 1.57GB
+...
+epoch  41 | lr 1.17e-05 | train loss 0.1679 acc 0.932 | val loss 0.3607 slice acc 0.870 patient acc 0.925 auroc 0.975 | 37s 1.57GB
+epoch  42 | lr 9.55e-06 | train loss 0.1598 acc 0.936 | val loss 0.3354 slice acc 0.872 patient acc 0.932 auroc 0.975 | 37s 1.57GB *
+epoch  43 | lr 7.60e-06 | train loss 0.1571 acc 0.939 | val loss 0.3888 slice acc 0.865 patient acc 0.919 auroc 0.974 | 37s 1.57GB
+epoch  44 | lr 5.85e-06 | train loss 0.1559 acc 0.938 | val loss 0.3594 slice acc 0.872 patient acc 0.925 auroc 0.975 | 37s 1.57GB
+epoch  45 | lr 4.32e-06 | train loss 0.1509 acc 0.941 | val loss 0.3484 slice acc 0.874 patient acc 0.925 auroc 0.976 | 37s 1.57GB
+epoch  46 | lr 3.02e-06 | train loss 0.1480 acc 0.943 | val loss 0.3491 slice acc 0.875 patient acc 0.932 auroc 0.976 | 37s 1.57GB
+epoch  47 | lr 1.94e-06 | train loss 0.1470 acc 0.943 | val loss 0.3445 slice acc 0.878 patient acc 0.925 auroc 0.976 | 37s 1.57GB
+epoch  48 | lr 1.09e-06 | train loss 0.1478 acc 0.942 | val loss 0.3450 slice acc 0.875 patient acc 0.932 auroc 0.976 | 37s 1.57GB
+epoch  49 | lr 4.87e-07 | train loss 0.1416 acc 0.945 | val loss 0.3466 slice acc 0.873 patient acc 0.932 auroc 0.976 | 37s 1.57GB
+epoch  50 | lr 1.22e-07 | train loss 0.1489 acc 0.942 | val loss 0.3469 slice acc 0.873 patient acc 0.932 auroc 0.976 | 37s 1.57GB
+
+Best epoch 42: val loss 0.3354, slice acc 0.872, patient acc 0.932, patient AUROC 0.975
+```
+
+### Inference
+
+Once trained, the model can be evaluated on the test set using the following command:
+
+```bash
+python predict.py
+```
+
+This loads the saved checkpoint, runs inference on every test slice, and prints a summary of slice-level and patient-level performance. The inputs to the model are the test images from the ADNI dataset, preprocessed as per the Data Preprocessing and Training section below. An example of the output is shown below:
+
+```text
+Model: gfnet from gfnet_20261027_144653 (epoch 42) on cuda
+Running inference on 9,000 test slices...
+
+Metric                      Slice level  Patient level
+------------------------------------------------------
+Count                             9,000            450
+Accuracy                          0.736          0.762
+AUROC                             0.800          0.840
+Macro-F1                          0.729          0.754
+Sensitivity (AD recall)           0.585          0.583
+Specificity (NC recall)           0.884          0.938
+Precision AD                      0.832          0.903
+Precision NC                      0.684          0.696
+Cross-entropy loss                1.157              -
+
+Patient-level confusion matrix (AD = positive, threshold 0.5)
+              Pred NC  Pred AD
+True NC           213       14
+True AD            93      130
+
+Example patient predictions (first 8 by patient ID)
+Patient     True   P(AD)  Predicted  Slice std  Correct
+1003730       AD   0.085         NC      0.185  no
+1004740       AD   0.067         NC      0.172  no
+1005735       AD   0.007         NC      0.008  no
+1011824       AD   0.462         NC      0.413  no
+1017725       AD   0.004         NC      0.008  no
+1020512       AD   0.828         AD      0.235  yes
+1029798       AD   0.292         NC      0.228  no
+1038941       AD   0.305         NC      0.388  no
+```
+
+### Visualisation
+
+To better understand what GFNet learns, the learned filters of all 12 blocks were visualised in the frequency domain, and the spatial domain. Each panel is scaled independently, so the colours show each filter’s shape rather than strength.
+
+![GFNet learned filters](images/gfnet_filters.png)
+
+The filters appear to show a high degree of noise: with a lack of structure in both the spatial and frequency domains. This will be further discussed later in this report.
+
 
 
 ## Data Preprocessing and Training
