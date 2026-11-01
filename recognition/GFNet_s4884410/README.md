@@ -120,7 +120,7 @@ To train the GFNet model on the ADNI dataset, run the following command from the
 python train.py --model gfnet
 ```
 
-The script trains the model on a patient-level training split, as outlined in the Data Preprocessing and Training section below. The script evaluates the model on the validation split after each epoch, and saves the checkpoint with the lowest validation loss to ‘runs/’. An abbreviated log from the final training run is shown below (* indicates that a checkpoint was saved):
+The script trains the model on a patient-level training split, as outlined in the Data Preprocessing and Training section below. The script evaluates the model on the validation split after each epoch, and saves the checkpoint with the lowest validation loss to `runs/`. An abbreviated log from the final training run is shown below (* indicates that a checkpoint was saved):
 
 ```text
 Run gfnet_20261027_144653 | device NVIDIA A100-PCIE-40GB | gfnet: 7,124,226 parameters
@@ -203,6 +203,65 @@ The filters appear to show a high degree of noise: with a lack of structure in b
 
 
 ## Data Preprocessing and Training
+
+### Dataset Structure
+
+The ADNI dataset was stored on the Rangpur HPC cluster, and had the following folder structure:
+
+```text
+PASTE FOLDER STRUCTURE HERE
+```
+
+### Data Preprocessing
+
+In the initial data audit, a patient-level validation split, consisting of 15% of the training patients, was created. This split was saved to `splits/val_split.json`. Additionally, the pixel mean and standard deviation were computed from the training patients only. To preprocess the data, each 256 × 240 greyscale slice was centre-cropped to 224 × 224 (as per the official implementation [1]), scaled to [0, 1], and normalised using the pixel mean (0.142) and standard deviation (0.242). No data augmentation was used initially.
+
+### Model Definition
+
+Firstly, the two models (GFNet and baseline CNN) were defined in `modules.py`.
+
+The implementation of GFNet follows the GFNet-Ti configuration of Rao et al. [1] (patch size 16, embedding dimension 256, depth 12, MLP ratio 4, 224 × 224 input), adapted to a 1-channel greyscale input and a 2-class head that outputs logits for NC and AD, with reference to the official code [2].
+
+The baseline CNN model was defined as follows:
+
+- 4 Convolutional blocks, each: 3x3 convolution (no bias) -> BatchNorm -> ReLU -> 2x2 max-pool
+- Channel widths: 32->64->128->256, which reduces the 224x224 input to a 14x14 feature map.
+- Global average pooling -> dropout (0.3) -> linear layer giving 2 logits (NC, AD).
+
+### Training
+
+Both models were trained using the same script (`train.py`), on the same data, patient-level splits, and preprocessing. Key training details/parameters are listed below:
+
+- **Loss function:** Cross-entropy on 2 logits (NC, AD), with no label smoothing
+- **Optimiser:** AdamW, weight decay 0.05
+- **Batch size:** 64 slices
+- **Learning rate schedule:** Linear warm-up from ~0, then cosine decay to 0, updated every batch.
+- **Precision:** Mixed precision (float16) on GPU
+- **Checkpoint selection:** Epoch with the lowest validation loss
+
+The baseline CNN was selected to have a peak learning rate of 3e-4. An initial training run showed its validation accuracy repeatedly collapsing at a higher rate, hence, it was reduced. 1 warm-up epoch was used, with a maximum of 30 epochs per training run. For the GFNet model, the maximum learning rate was 1e-4, with 5 warm-up epochs, and a maximum of 50 epochs per training run.
+
+Several training runs were completed before arriving at the final model.
+
+1. **Training run 1:** The first training run was completed with the standard procedures listed above. Results showed that without any data augmentation, GFNet memorised the training set within approximately 8 epochs, while validation accuracy stayed at around 0.75, demonstrating clear overfitting. Similarly, the CNN also overfit. In addition, the CNN’s validation loss and accuracy were highly unstable for the first 20 epochs, collapsing to approximately 50% accuracy.
+
+<p align="center">
+  <img src="images/training_curves_run_1.png" alt="Training curves, run 1" width="50%">
+</p>
+
+2. **Training run 2:** To address the overfitting that occurred in the previous run, data augmentation was introduced: rotation up to +/- 10 degrees, translation by up to 5% of the image size, and scaling between 0.95 and 1.05. Results showed that GFNet no longer memorised the training set, with the training and validation accuracies rising together. The CNN training curves remain unstable until approximately epoch 20, however, they settle at approximately a 90% validation accuracy, and a slightly lower training accuracy than before, indicating less memorisation.
+
+<p align="center">
+  <img src="images/training_curves_run_2.png" alt="Training curves, run 2" width="50%">
+</p>
+
+3. **Training run 3:** A third training run was completed to investigate whether changing the size of the GFNet model would impact its performance. A smaller GFNet was used, with an embedding dimension of 192, and depth of 6. This yielded very similar results to Training Run 2.
+
+<p align="center">
+  <img src="images/training_curves_run_3.png" alt="Training curves, run 3" width="50%">
+</p>
+
+The GFNet and CNN from training run 2 were selected for all future analysis and evaluation. The larger GFNet was preferred to the smaller one in run 3 as it matches the official implementation.
 
 ## Investigation of the Open Research Dilemma
 
