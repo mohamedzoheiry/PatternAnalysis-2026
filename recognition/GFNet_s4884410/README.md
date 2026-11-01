@@ -7,7 +7,7 @@ Alzheimer’s disease is a common form of dementia that affects memory, thinking
 
 ### Algorithm Description
 
-GFNet [1] is a vision-transformer style architecture that replaces the self-attention sub-layer with a global filter layer. Each 224x224 input image is split into 16x16 patches, giving a 14x14 grid of 196 tokens. Each patch is linearly embedded into a 256-dimensional token, and a learnable positional embedding is added. The tokens then pass through a stack of 12 GFNet Blocks. Each of these blocks applies layer normalisation, the global filter layer, a second layer normalisation, and a feed-forward MLP, with a single residual connection around the whole block, as per the official implementation [2].
+GFNet [[1]](#ref1) is a vision-transformer style architecture that replaces the self-attention sub-layer with a global filter layer. Each 224x224 input image is split into 16x16 patches, giving a 14x14 grid of 196 tokens. Each patch is linearly embedded into a 256-dimensional token, and a learnable positional embedding is added. The tokens then pass through a stack of 12 GFNet Blocks. Each of these blocks applies layer normalisation, the global filter layer, a second layer normalisation, and a feed-forward MLP, with a single residual connection around the whole block, as per the official implementation [[2]](#ref2).
 
 The global filter layer consists of three main operations:
 
@@ -222,7 +222,7 @@ The ADNI dataset was stored on the Rangpur HPC cluster, and had the following fo
 
 ### Data Preprocessing
 
-In the initial data audit, a patient-level validation split, consisting of 15% of the training patients, was created. This split was saved to `splits/val_split.json`. Additionally, the pixel mean and standard deviation were computed from the training patients only. To preprocess the data, each 256 × 240 greyscale slice was centre-cropped to 224 × 224 (as per the official implementation [1]), scaled to [0, 1], and normalised using the pixel mean (0.142) and standard deviation (0.242). No data augmentation was used initially.
+In the initial data audit, a patient-level validation split, consisting of 15% of the training patients, was created. This split was saved to `splits/val_split.json`. Additionally, the pixel mean and standard deviation were computed from the training patients only. To preprocess the data, each 256 × 240 greyscale slice was centre-cropped to 224 × 224 (as per the official implementation [[2]](#ref2)), scaled to [0, 1], and normalised using the pixel mean (0.142) and standard deviation (0.242). No data augmentation was used initially.
 
 ### Model Definition
 
@@ -484,3 +484,9 @@ Based on the results throughout this report, several recommendations can be made
 ## AI Disclosure
 
 ## References
+
+<a name="ref1"></a>[1] Y. Rao, W. Zhao, Z. Zhu, J. Lu, and J. Zhou, "Global Filter Networks for Image Classification," in *Advances in Neural Information Processing Systems (NeurIPS)*, 2021. arXiv: [2107.00645](https://arxiv.org/abs/2107.00645).
+
+<a name="ref2"></a>[2] Y. Rao, "GFNet: Global Filter Networks for Image Classification," GitHub repository, 2021. [Online]. Available: https://github.com/raoyongming/GFNet
+
+<a name="ref3"></a>[3] R. Wightman, "PyTorch Image Models (timm): `timm/layers/drop.py`," GitHub repository, Hugging Face. [Online]. Available: https://github.com/huggingface/pytorch-image-models/blob/main/timm/layers/drop.py
