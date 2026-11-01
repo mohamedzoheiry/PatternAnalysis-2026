@@ -352,7 +352,7 @@ In this section, three different failure cases will be analyse to better underst
 #### Case 1: Patient 1005735 – confident miss (true AD, predicted NC)
 
 <p align="center">
-  <img src="images/patient_1005735.png" alt="Patient 1005735 slices and predictions" width="80%">
+  <img src="images/patient_1005735_gfnet.png" alt="Patient 1005735 slices and predictions" width="80%">
 </p>
 
 ```text
@@ -393,7 +393,7 @@ This is the most dominant failure mode, as supported by the spike near 0 in the 
 #### Case 2: Patient 1011824 – conflicted miss (true AD, predicted NC)
 
 <p align="center">
-  <img src="images/patient_1011824.png" alt="Patient 1011824 slices and predictions" width="80%">
+  <img src="images/patient_1011824_gfnet.png" alt="Patient 1011824 slices and predictions" width="80%">
 </p>
 
 ```text
@@ -434,7 +434,7 @@ A slice disagreement rule would be able to catch this case in a real application
 #### Case 3: Patient 1253141 – confident false alarm (true AD, predicted NC)
 
 <p align="center">
-  <img src="images/patient_1253141.png" alt="Patient 1253141 slices and predictions" width="80%">
+  <img src="images/patient_1253141_gfnet.png" alt="Patient 1253141 slices and predictions" width="80%">
 </p>
 
 ```text
