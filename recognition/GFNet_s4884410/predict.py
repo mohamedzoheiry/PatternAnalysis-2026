@@ -1,3 +1,17 @@
+"""
+Example usage of the trained GFNet: load the saved model, run it on the test set,
+and print a summary of its performance.
+
+Prints a table of slice-level and patient-level metrics, the patient-level
+confusion matrix, and a few example patient predictions. Slice-level metrics
+treat each of the 9,000 test slices separately; patient-level metrics average
+the AD probability over each patient's 20 slices and predict AD if the mean is
+at least 0.5 (threshold).
+
+Usage (from the project folder; uses a GPU if available, otherwise the CPU):
+    python predict.py
+"""
+
 from collections import Counter
 
 import torch
@@ -33,6 +47,7 @@ def confusion(rows):
 
 
 def main():
+    """Load the checkpoint, run test-set inference, and print the summary."""
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model, ckpt = load_model(CHECKPOINT_RUN, device)
     print(

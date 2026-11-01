@@ -1,3 +1,21 @@
+"""
+Final evaluation of the trained models: run once, after all training and model choice.
+
+For each model in RUNS, loads its best checkpoint and writes to OUT_DIR/<model>/:
+    val_slice.csv, test_slice.csv       one row per slice: pid, slice_pos, label,
+                                        logit_ad_minus_nc, prob_ad
+    val_patient.csv, test_patient.csv   one row per patient: label, n_slices, prob_ad,
+                                        slice_prob_std
+    metrics.json                        loss and slice/patient metrics for val and test
+    profile.json                        parameters, MACs, peak inference memory, latency
+
+Validation predictions are for choosing thresholds (e.g. the triage rule); test
+predictions are for reporting only.
+
+Usage:
+    python evaluate.py
+"""
+
 import json
 import time
 from pathlib import Path
@@ -27,6 +45,11 @@ SLICES_PER_PATIENT = 20
 
 
 def load_model(run_dir, device):
+    """Rebuild a model from run_dir/best.pt, using the settings saved with it.
+
+    Returns:
+        (model in eval mode on device, checkpoint dict)
+    """
     ckpt = torch.load(Path(run_dir) / "best.pt", map_location="cpu", weights_only=False)
     if ckpt["model"] == "cnn":
         model = BaselineCNN()
@@ -39,6 +62,7 @@ def load_model(run_dir, device):
 
 
 def evaluate_split(model, loader, device, out_dir, split):
+    """Save slice and patient predictions for one split, and return its metrics."""
     loss, rows = predict(model, loader, device)
     patients = aggregate_patients(rows)
     save_rows_csv(rows, out_dir / f"{split}_slice.csv")
@@ -58,6 +82,11 @@ def evaluate_split(model, loader, device, out_dir, split):
 
 @torch.no_grad()
 def latency_ms(model, batch, device, amp):
+    """Median forward-pass time in ms for one batch, after LATENCY_WARMUP untimed runs.
+
+    The GPU is synchronised before and after each run so the timing covers the
+    full computation.
+    """
     use_amp = amp and device.type == "cuda"
     times = []
     for i in range(LATENCY_WARMUP + LATENCY_RUNS):
@@ -77,6 +106,10 @@ def latency_ms(model, batch, device, amp):
 
 @torch.no_grad()
 def peak_memory_gb(model, batch, device):
+    """Peak GPU memory (GB) allocated by PyTorch for one AMP forward pass, including weights.
+
+    Returns NaN on CPU.
+    """
     if device.type != "cuda":
         return float("nan")
     torch.cuda.synchronize()
@@ -88,6 +121,11 @@ def peak_memory_gb(model, batch, device):
 
 
 def count_flops(model):
+    """Multiply-accumulates (MACs) for one 224 x 224 slice, counted with thop.
+
+    FFT operations are not counted, so GFNet's figure is a slight undercount.
+    Returns None if thop is not installed.
+    """
     try:
         from thop import profile
     except ImportError:
@@ -100,6 +138,7 @@ def count_flops(model):
 
 
 def profile_model(model, device):
+    """Parameters, MACs, peak inference memory and latency, measured on synthetic input."""
     model.eval()
     one = torch.zeros(1, 1, 224, 224, device=device)
     patient = torch.zeros(SLICES_PER_PATIENT, 1, 224, 224, device=device)
@@ -119,6 +158,7 @@ def profile_model(model, device):
 
 
 def main():
+    """Evaluate every model in RUNS on validation and test, and profile it."""
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     gpu = torch.cuda.get_device_name(0) if device.type == "cuda" else "none (CPU)"
     print(f"Device: {gpu}")

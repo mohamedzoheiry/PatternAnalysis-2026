@@ -1,4 +1,6 @@
 """
+This script was produced with the help of AI.
+
 Plot training and validation loss and accuracy for the CNN and GFNet runs.
 
 Rows: models. Columns: loss, accuracy. Accuracy is slice-level for both curves.

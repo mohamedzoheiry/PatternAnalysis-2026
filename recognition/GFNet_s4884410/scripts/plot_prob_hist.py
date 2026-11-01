@@ -1,4 +1,6 @@
 """
+This script was produced with the help of AI.
+
 Histograms of per-slice AD probabilities on the test set, from evaluate.py's output.
 
 Rows: models. Columns: truly AD slices, truly NC slices, all slices.

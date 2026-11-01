@@ -1,3 +1,18 @@
+"""
+Shared helpers for training, evaluation and later analysis.
+
+- set_seed:               reproducible Python / NumPy / PyTorch randomness
+- predict:                run a model over a slice loader and collect per-slice outputs
+- aggregate_patients:     average slice probabilities into one prediction per patient
+- classification_metrics: accuracy, per-class precision/recall, macro-F1, AUROC
+- evaluate:               predict + metrics at slice and patient level, in one call
+- save_rows_csv:          write a list of dicts to CSV
+- plot_history:           training curves (loss and accuracy per epoch)
+
+The same evaluate() is used for validation during training and for the final
+test evaluation, so every model and split is scored identically.
+"""
+
 import csv
 import random
 from collections import defaultdict
@@ -19,7 +34,16 @@ def set_seed(seed):
 
 @torch.no_grad()
 def predict(model, loader, device, amp=True):
-    """Run the model over a slice loader in eval mode."""
+    """Run the model over a slice loader in eval mode.
+
+    Returns:
+        (mean cross-entropy loss, rows), with one row per slice:
+        {"pid", "slice_pos", "label", "logit_ad_minus_nc", "prob_ad"}.
+
+    The logit difference (AD minus NC) is kept so that temperature scaling can be
+    fitted later without rerunning the model. Logits are cast to float32 before
+    the softmax so that mixed precision does not round the probabilities.
+    """
     model.eval()
     loss_fn = nn.CrossEntropyLoss(reduction="sum")
     use_amp = amp and device.type == "cuda"
@@ -52,7 +76,12 @@ def predict(model, loader, device, amp=True):
 
 
 def aggregate_patients(slice_rows):
-    """One row per patient: mean AD probability over its slices."""
+    """One row per patient: mean AD probability over its slices.
+
+    Returns rows {"pid", "label", "n_slices", "prob_ad", "slice_prob_std"}, sorted
+    by patient ID. slice_prob_std (the standard deviation of the slice
+    probabilities) measures how much the patient's slices disagree.
+    """
     by_pid = defaultdict(list)
     labels = {}
     for r in slice_rows:
@@ -74,7 +103,12 @@ def aggregate_patients(slice_rows):
 
 
 def classification_metrics(labels, probs, threshold=0.5):
-    """Accuracy, per-class precision and recall, macro-F1 and AUROC."""
+    """Accuracy, per-class precision and recall, macro-F1 and AUROC.
+
+    AD (label 1) is the positive class, so recall_ad is sensitivity and
+    recall_nc is specificity. Predictions are AD when prob >= threshold. AUROC
+    uses the probabilities directly, and is NaN if only one class is present.
+    """
     y = np.asarray(labels, dtype=int)
     p = np.asarray(probs, dtype=float)
     pred = (p >= threshold).astype(int)
@@ -94,7 +128,11 @@ def classification_metrics(labels, probs, threshold=0.5):
 
 
 def evaluate(model, loader, device, amp=True):
-    """Loss plus slice- and patient-level metrics, and the per-slice / per-patient rows."""
+    """Loss plus slice- and patient-level metrics, and the per-slice / per-patient rows.
+
+    Returns:
+        {"loss", "slice": metrics, "patient": metrics, "slice_rows", "patient_rows"}
+    """
     loss, slice_rows = predict(model, loader, device, amp)
     patient_rows = aggregate_patients(slice_rows)
     return {
@@ -121,10 +159,13 @@ def save_rows_csv(rows, path):
 
 
 def plot_history(history, out_path, title=""):
-    """Plot train/val loss and train/val accuracy against epoch."""
+    """Plot train/val loss and train/val accuracy against epoch, and save to out_path.
+
+    history: list of per-epoch dicts as written by train.py (history.csv rows).
+    """
     import matplotlib
 
-    matplotlib.use("Agg")
+    matplotlib.use("Agg")  # no display on Rangpur
     import matplotlib.pyplot as plt
 
     epochs = [h["epoch"] for h in history]

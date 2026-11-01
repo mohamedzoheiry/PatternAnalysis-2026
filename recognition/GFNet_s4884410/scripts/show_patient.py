@@ -1,4 +1,6 @@
 """
+This script was produced with the help of AI.
+
 Show slices of one test patient with their true and predicted labels, and print the
 AD probability of every slice. Uses evaluate.py's saved test predictions; no GPU needed.
 

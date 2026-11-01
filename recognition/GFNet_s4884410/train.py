@@ -1,3 +1,31 @@
+"""
+Train a model for ADNI AD vs NC classification.
+
+One script trains every model (--model cnn or gfnet), so all models share the same
+data, splits, training recipe, evaluation and logging. Settings are constants at
+the top of this file; each run records the values it used in its config.json.
+
+Recipe: AdamW, linear learning-rate warm-up then cosine decay (stepped every
+batch), mixed precision (AMP) on GPU, gradient clipping, no label smoothing.
+After each epoch the model is evaluated on the validation patients; the
+checkpoint with the lowest validation loss is kept, and training stops early if
+validation loss has not improved for PATIENCE epochs. The test set is never used.
+
+Each run writes to runs/<model>_<timestamp>/:
+    config.json                   all settings, seed, GPU, parameter count
+    history.csv                   per-epoch losses, metrics, learning rate, time, peak VRAM
+    best.pt                       best checkpoint (not committed to git)
+    val_slice_predictions.csv     per-slice validation outputs at the best epoch
+    val_patient_predictions.csv   per-patient validation outputs at the best epoch
+    curves.png                    loss and accuracy curves
+    summary.json                  best epoch and its metrics, timing, peak VRAM
+
+Usage:
+    python train.py --model cnn              # full training run
+    python train.py --model gfnet
+    python train.py --model gfnet --overfit  # smoke test: should reach ~100% accuracy
+"""
+
 import argparse
 import json
 import time
@@ -48,8 +76,10 @@ GFNET_SIZES = {
     },  # 2.1M params
 }
 
-GFNET_ARGS = GFNET_SIZES["ti"]
-AUGMENT = True
+GFNET_ARGS = GFNET_SIZES["ti"]  # GFNet size used for training
+AUGMENT = (
+    True  # training-time augmentation (settings in dataset.py; off in overfit mode)
+)
 
 # Shared by all models.
 BATCH_SIZE = 64
@@ -66,7 +96,7 @@ OVERFIT_EPOCHS = 30
 
 
 def build_model(name):
-    """Return a fresh model by name"""
+    """Return a freshly initialised model by name ("cnn" or "gfnet")."""
     if name == "cnn":
         return BaselineCNN()
     if name == "gfnet":
@@ -75,7 +105,13 @@ def build_model(name):
 
 
 def build_scheduler(optimiser, warmup_steps, total_steps):
-    """Linear warm-up from ~0 to the peak LR, then cosine decay to 0. Stepped once per batch."""
+    """Linear warm-up from ~0 to the peak LR, then cosine decay to 0. Stepped once per batch.
+
+    Args:
+        optimiser: the optimiser whose learning rate is scheduled.
+        warmup_steps: number of batches of linear warm-up (0 disables warm-up).
+        total_steps: total number of batches in the run.
+    """
     if warmup_steps == 0:
         return CosineAnnealingLR(optimiser, T_max=total_steps)
     warmup = LinearLR(optimiser, start_factor=1e-3, total_iters=warmup_steps)
@@ -84,7 +120,11 @@ def build_scheduler(optimiser, warmup_steps, total_steps):
 
 
 def make_loaders(overfit):
-    """Full train/val loaders, or one small fixed subset for the overfit smoke test."""
+    """Full train/val loaders, or one small fixed subset for the overfit smoke test.
+
+    Returns:
+        (train_loader, val_loader, (mean, std))
+    """
     datasets, (mean, std) = get_datasets(
         DATA_ROOT, num_workers=NUM_WORKERS, augment=AUGMENT and not overfit
     )
@@ -103,7 +143,12 @@ def make_loaders(overfit):
 
 
 def train_one_epoch(model, loader, optimiser, scheduler, scaler, loss_fn, device):
-    """One pass over the training data. Returns mean loss and slice accuracy."""
+    """One pass over the training data. Returns mean loss and slice accuracy.
+
+    Uses mixed precision on GPU. Gradients are unscaled before clipping so the
+    norm limit applies to the true gradients, and the learning-rate scheduler
+    is stepped after every batch.
+    """
     model.train()
     use_amp = device.type == "cuda"
     total_loss, correct, n = 0.0, 0, 0
@@ -116,7 +161,7 @@ def train_one_epoch(model, loader, optimiser, scheduler, scaler, loss_fn, device
             logits = model(x)
             loss = loss_fn(logits, y)
         scaler.scale(loss).backward()
-        scaler.unscale_(optimiser)
+        scaler.unscale_(optimiser)  # clip the true gradients, not the scaled ones
         nn.utils.clip_grad_norm_(model.parameters(), GRAD_CLIP)
         scaler.step(optimiser)
         scaler.update()
@@ -129,6 +174,7 @@ def train_one_epoch(model, loader, optimiser, scheduler, scaler, loss_fn, device
 
 
 def main():
+    """Train one model, logging every epoch and saving the best checkpoint and outputs."""
     ap = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
     )
