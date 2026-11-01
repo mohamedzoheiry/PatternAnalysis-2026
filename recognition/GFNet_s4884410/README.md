@@ -472,7 +472,14 @@ The slices show that despite the patient being healthy, there are signs of atrop
 
 Similarly to Case 1, this is a confident failure case that no confidence-based rule could catch.
 
-### Recommendation
+### Recommendations
+
+Based on the results throughout this report, several recommendations can be made regarding model choice, using the model in practice, and steps to be taken before deployment:
+
+1. If a patient’s mean AD probability is at least 0.9, they should be reported as AD and should be fast-tracked to a specialist. This is justified by the fact that 0.9 is well above the threshold of 0.9. Additionally, the histograms above show that most correct AD slices sit above 0.9, with very few NC slices reaching this level. This does not clear any patient below 0.9, as it has clearly been shown that the model is frequently overconfident that an AD patient is healthy (e.g. failure case 1).
+2. Even if a patient has a mean AD probability of at least 0.9, if their slice probabilities have a standard deviation of 0.2 or more, they should be forwarded to a specialist for review. This is because a high mean can hide conflicting slices, meaning that the model’s predictions are inconsistent. This rule highlights cases where the model’s predictions are inconsistent, ensuring that such disagreements are reviewed by a specialist.
+3. The CNN is the better model for this application. Both models have a very similar classification performance, and similar failure modes. However, the GFNet is much more computationally expensive and complex. The added architectural complexity and computational cost of the GFNet is not justified by its performance.
+4. Neither model is suitable or ready for autonomous use. It has been shown that both models miss over 40% of AD patients, with many of those being confident misses.
 
 ## AI Disclosure
 
