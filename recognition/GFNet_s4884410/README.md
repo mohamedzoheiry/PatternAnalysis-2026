@@ -275,6 +275,55 @@ The GFNet and CNN from training run 2 were selected for all future analysis and 
 
 ### Quantitative Benchmarking
 
+Using the results from `evaluate.py`, the performance of the two models can be evaluated. The results are summarised below:
+
+```text
+CNN (test set)
+Metric                      Slice level  Patient level
+------------------------------------------------------
+Count                             9,000            450
+Accuracy                          0.745          0.751
+AUROC                             0.825          0.852
+Macro-F1                          0.736          0.742
+Sensitivity (AD recall)           0.569          0.565
+Specificity (NC recall)           0.917          0.934
+Precision AD                      0.870          0.894
+Precision NC                      0.684          0.686
+Cross-entropy loss                0.961              -
+
+GFNET (test set)
+Metric                      Slice level  Patient level
+------------------------------------------------------
+Count                             9,000            450
+Accuracy                          0.736          0.762
+AUROC                             0.800          0.840
+Macro-F1                          0.729          0.754
+Sensitivity (AD recall)           0.585          0.583
+Specificity (NC recall)           0.884          0.938
+Precision AD                      0.832          0.903
+Precision NC                      0.684          0.696
+Cross-entropy loss                1.157              -
+```
+
+Overall, the two models perform very similarly based on the metrics above.
+
+- On the test set, both models have similar slice-level and patient-level accuracies, with GFNet slightly outperforming the CNN at the patient level. Note that patient level predictions were made by taking the average prediction across all slices, with a threshold of 0.5.
+- The CNN has a slightly higher AUROC score (0.852 vs 0.840), suggesting that it is slightly better at separating the two classes.
+- Both models have a poor patient-level sensitivity (0.583 for GFNet, 0.565 for CNN), meaning that they both miss over 40% of AD patients. This is a serious limitation for screening, because a false negative would falsely reassure a patient with AD and delay their diagnosis and care. On the other hand, the models have high patient-level specificity (0.934 and 0.938), indicating that they can effectively clear healthy patients.
+- Similarly, the models have high precision for AD cases (0.894 and 0.903), meaning that an AD prediction is likely to be correct. However, the precision for NC patients is much lower (0.686 and 0.696), indicating that roughly 30% of NC predictions are actually AD.
+- The GFNet has a higher cross-entropy loss (1.157 vs 0.961), indicating that GFNet is more overconfident when wrong.
+
+To further investigate the nature of the predictions of the models, a set of histograms were plotted, which show the predicted AD probabilities for both models.
+
+<p align="center">
+  <img src="images/test_slice_prob_hist.png" alt="Predicted AD probability histograms" width="80%">
+</p>
+
+The histograms confirm the low sensitivity and high specificity: NC slices lie almost entirely below 0.5, while many AD slices sit confidently near 0. So most missed AD cases are confident errors rather than borderline ones, which explains the high test loss of both models.
+
+Overall, based on these results, the CNN is the better choice. It provides equal classification performance, with slightly better confidence. GFNet’s added complexity isn’t justified.
+
+
 ### Resource Profiling
 
 ### Qualitative Error Autopsies
