@@ -326,6 +326,25 @@ Overall, based on these results, the CNN is the better choice. It provides equal
 
 ### Resource Profiling
 
+The resource profiling table below summarises key metrics that describe the computational cost of each model.
+
+| Metric | CNN | GFNet-Ti | GFNet ÷ CNN |
+|:---|---:|---:|---:|
+| Parameters | 388,834 (0.39M) | 7,124,226 (7.1M) | 18.3× |
+| Peak training VRAM (batch 64) | 1.32 GB | 1.57 GB | 1.2× |
+| Peak inference VRAM (batch 64) | 0.49 GB | 0.16 GB | 0.3× |
+| Inference latency per slice (batch 1) | 0.88 ms | 6.58 ms | 7.5× |
+| Inference latency per patient (20 slices) | 2.14 ms | 6.71 ms | 3.1× |
+| Mean training time per epoch | 34.9 s | 37.2 s | 1.1× |
+| Best epoch / epochs run | 30 / 30 | 42 / 50 | |
+| Training time to best epoch | 17.5 min | 26.0 min | 1.5× |
+| Total training time | 17.5 min | 31.0 min | 1.8× |
+
+> **NOTE:** These metrics were measured on an NVIDIA A100 GPU.
+
+Clearly, the GFNet model is much more computationally expensive compared to the baseline CNN model. This further justifies why the CNN is the better option in this application.
+
+
 ### Qualitative Error Autopsies
 
 ### Recommendation
